@@ -64,30 +64,42 @@ async def main(symbols, producer, session):
 
 if __name__ == "__main__":
     symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT']
-    try:
-        cluster = Cluster(['cassandra'])
-        cluster.default_retry_policy = RetryPolicy()
-        cluster.reconnection_policy = ExponentialReconnectionPolicy(1.0, 60.0)
+    
+    statusConnection = False
 
-        create_keyspace_query = f"CREATE KEYSPACE IF NOT EXISTS {'binance'}" \
-                                f" WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1  }}"
+    # In the start of cassandra service, it is quite possible that
+    # cassandra has not yet initialized and the this application
+    # starts before that. For that it is important to poll the connection
+    # status
 
-        session = cluster.connect()
-        session.execute(create_keyspace_query)
-        session = cluster.connect('binance')
+    while not statusConnection:
+        try:
+            cluster = Cluster(['cassandra'])
+            cluster.default_retry_policy = RetryPolicy()
+            cluster.reconnection_policy = ExponentialReconnectionPolicy(1.0, 60.0)
 
-        print("connection to Cassandra has been established..")
+            create_keyspace_query = f"CREATE KEYSPACE IF NOT EXISTS {'binance'}" \
+                                    f" WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1  }}"
+
+            session = cluster.connect()
+            session.execute(create_keyspace_query)
+            session = cluster.connect('binance')
+
+            statusConnection = bool(session.execute("SELECT * FROM system_schema.keyspaces WHERE keyspace_name='binance'"))
+
+            print("connection to Cassandra has been established..")
         
-        session.load_balancing_policy = RoundRobinPolicy()
+            session.load_balancing_policy = RoundRobinPolicy()
 
-        producer_conf = {'bootstrap.servers': 'kafka'}
-        producer = Producer(producer_conf)
+            producer_conf = {'bootstrap.servers': 'kafka'}
+            producer = Producer(producer_conf)
 
-        print("Now going to continuously publish and store")
+            print("Now going to continuously publish and store")
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(main(symbols, producer, session))
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main(symbols, producer, session))
+            break
 
-    except Exception as e:
+        except Exception as e:
 
-        print(f"Failed to connect to Cassandra: {e}")
+            print(f"Failed to connect to Cassandra, waiting ..........: {e}")
