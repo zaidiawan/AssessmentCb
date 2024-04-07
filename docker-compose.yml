@@ -1,87 +1,42 @@
 version: '3'
 
-
-
 services:
 
   zookeeper:
-
     image: wurstmeister/zookeeper
-
     container_name: zookeeper_container
-
     networks:
-
       - docker-network
-
-
-
   kafka:
-
     image: wurstmeister/kafka
-
     container_name: kafka_container
-
     environment:
-
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-
     depends_on:
-
       - zookeeper
-
     networks:
-
       - docker-network
-
-
-
   cassandra:
-
     image: cassandra:latest
-
     ports:
-
       - "9042:9042"  
-
     container_name: cassandra_container
-
     networks:
-
       - docker-network
-
-
-
   appbkend:
-
     build:
-
       context: .
-
       dockerfile: Dockerfile
-
     container_name: appbackend_container
 
-  
-
     volumes:
-
       - .:/app
-
     networks:
-
       - docker-network
 
-
-
 networks:
-
   docker-network:

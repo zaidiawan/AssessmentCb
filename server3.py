@@ -48,6 +48,8 @@ async def store_in_cassadra(symbol, trade_data, session):
                 {trade_data['p']}, {trade_data['q']}, {int(trade_data['f'])}, '{trade_data['l']}', {trade_data['T']}, {trade_data['m']})
         """
         session.execute(insert_query)
+        #print("data successfully entered into Cassandra")
+    
     except Exception as e:
         print("Failed to interact with Cassandra:", e)
 
@@ -65,7 +67,16 @@ async def main(symbols):
             cluster.default_retry_policy = RetryPolicy()
             cluster.reconnection_policy = reconnection_policy
 
-            session = cluster.connect('binance_usd')
+            create_keyspace_query = f"CREATE KEYSPACE IF NOT EXISTS {'binance'}" \
+                                    f" WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1  }}"
+
+            session = cluster.connect()
+            session.execute(create_keyspace_query)
+
+            print("Key space created successfully!.......")
+
+
+            session = cluster.connect('binance')
             session.load_balancing_policy = load_balancing_policy
 
             producer_conf = {'bootstrap.servers': 'kafka'}
